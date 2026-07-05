@@ -52,6 +52,11 @@ export abstract class Dist<A> {
     flat<T>(this: Dist<Dist<T>>) {
         return this.map(x => x.pick())
     }
+    match<I extends A, O>(i: I, o: O) {
+        return this.map(x =>
+            (x == i ? o : x) as Exclude<A, I> | O
+        )
+    }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> },
