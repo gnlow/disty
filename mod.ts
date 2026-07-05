@@ -33,6 +33,9 @@ export abstract class Dist<A> {
             f(this.pick())
         )
     }
+    destine(a: A) {
+        return Dist.u([a])
+    }
     filter(f: (a: A) => boolean) {
         const rf =
         (): A => {
