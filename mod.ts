@@ -29,7 +29,7 @@ export const RecordLike = {
 export abstract class Dist<A> {
     abstract pick(): A
     map<B>(f: (a: A) => B) {
-        return new FuncDist(() =>
+        return Dist.f(() =>
             f(this.pick())
         )
     }
@@ -42,7 +42,7 @@ export abstract class Dist<A> {
             const p = this.pick()
             return f(p) ? p : rf()
         }
-        return new FuncDist(rf)
+        return Dist.f(rf)
     }
     cross<Ts extends unknown[]>(
         ...dists: { [K in keyof Ts]: Dist<Ts[K]> }
@@ -64,7 +64,7 @@ export abstract class Dist<A> {
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> },
     ) {
-        return new FuncDist(() =>
+        return Dist.f(() =>
             RecordLike.mapV(<A>(dist: Dist<A>) =>
                 dist.pick()
             )(dists) as Ts
@@ -85,13 +85,13 @@ export abstract class Dist<A> {
             [0],
         ) 
         const wSum = is.at(-1)!
-        return new FuncDist(() => {
+        return Dist.f(() => {
             const seed = Math.random()*wSum
             return aws[is.findIndex(i => seed < i)-1][0]
         })
     }
     static p(p: number) {
-        return new FuncDist(() =>
+        return Dist.f(() =>
             Math.random() < p
         )
     }
@@ -107,6 +107,9 @@ export abstract class Dist<A> {
                 a + b + (i<ts.length ? ts[i] : ""),
                 "",
             ))
+    }
+    static f<A>(pick: () => A): FuncDist<A> {
+        return Dist.f(pick)
     }
 }
 
