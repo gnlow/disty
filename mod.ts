@@ -108,8 +108,8 @@ export abstract class Dist<A> {
                 "",
             ))
     }
-    static f<A>(pick: () => A): FuncDist<A> {
-        return Dist.f(pick)
+    static f<A>(pick: () => A) {
+        return new FuncDist(pick)
     }
 }
 
