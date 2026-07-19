@@ -55,6 +55,9 @@ export abstract class Dist<A> {
     flat<T>(this: Dist<Dist<T>>) {
         return this.map(x => x.pick())
     }
+    flatMap<B>(f: (a: A) => Dist<B>): Dist<B> {
+        return this.map(f).flat()
+    }
     match<I extends A, O>(i: I, o: O) {
         return this.map(x =>
             (x == i ? o : x) as Exclude<A, I> | O
