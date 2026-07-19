@@ -45,7 +45,7 @@ export abstract class Dist<A> {
         return Dist.f(rf)
     }
     cross<Ts extends unknown[]>(
-        ...dists: { [K in keyof Ts]: Dist<Ts[K]> }
+        ...dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] }
     ) {
         return Dist.cross<[A, ...Ts]>([this, ...dists])
     }
@@ -63,13 +63,18 @@ export abstract class Dist<A> {
             (x == i ? o : x) as Exclude<A, I> | O
         )
     }
+    flatMatch<I extends A, O>(i: I, o: Dist<O>) {
+        return this.match(i, o.pick())
+    }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
-        dists: { [K in keyof Ts]: Dist<Ts[K]> },
+        dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
     ) {
         return Dist.f(() =>
-            RecordLike.mapV(<A>(dist: Dist<A>) =>
-                dist.pick()
+            RecordLike.mapV(<A>(dist: Dist<A> | A) =>
+                dist instanceof Dist
+                    ? dist.pick()
+                    : dist
             )(dists) as Ts
         )
     }
