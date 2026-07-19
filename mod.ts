@@ -44,10 +44,10 @@ export abstract class Dist<A> {
         }
         return Dist.f(rf)
     }
-    cross<Ts extends unknown[]>(
-        ...dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] }
+    cross<Ds extends unknown[]>(
+        ...dists: Ds
     ) {
-        return Dist.cross<[A, ...Ts]>([this, ...dists])
+        return Dist.cross<[A, ...{ [K in keyof Ds]: Ds[K] extends Dist<infer T> ? T : Ds[K] }]>([this, ...dists] as any)
     }
     concat(this: Dist<string>, ...dists: Dist<string>[]) {
         return Dist.concat(this, ...dists)

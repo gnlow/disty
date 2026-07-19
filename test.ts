@@ -15,3 +15,6 @@ const person = Dist.cross({
 })
 
 console.log(person.pick())
+
+Dist.u([1]).cross(Dist.u([2])) satisfies Dist<[number, number]>
+Dist.cross([Dist.u([1]), Dist.u([2])]) satisfies Dist<[number, number]>
