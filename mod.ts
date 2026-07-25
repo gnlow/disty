@@ -1,3 +1,10 @@
+import { xxHash32 } from "https://esm.sh/js-xxhash@5.0.1"
+
+export const hash =
+(key: number) =>
+(seed: number) =>
+    xxHash32(seed+";"+key, 0) / 2**32
+
 export const arr =
 (n: number) =>
     new Array(n).keys().toArray()
@@ -26,23 +33,32 @@ export const RecordLike = {
     ) as unknown as RecordLike<K, V2>,
 }
     
-export abstract class Dist<A> {
-    abstract pick(): A
+export class Dist<A> {
+    constructor(
+        readonly f: (seed: number) => A,
+        readonly key: null | number = Math.random(),
+    ) {}
+    pick(seed: number) {
+        return this.key == null
+            ? this.f(seed)
+            : this.f(hash(this.key)(seed))
+    }
+    
     map<B>(f: (a: A) => B) {
-        return Dist.f(() =>
-            f(this.pick())
-        )
+        return Dist.f(seed =>
+            f(this.pick(seed))
+        ).withKey(null)
     }
     destine(a: A) {
-        return Dist.u([a])
+        return Dist.u([a]).withKey(null)
     }
     filter(f: (a: A) => boolean) {
         const rf =
-        (): A => {
-            const p = this.pick()
-            return f(p) ? p : rf()
+        (seed: number): A => {
+            const p = this.pick(seed)
+            return f(p) ? p : rf(seed)
         }
-        return Dist.f(rf)
+        return Dist.f(rf).withKey(null)
     }
     cross<Ds extends unknown[]>(
         ...dists: Ds
@@ -51,9 +67,12 @@ export abstract class Dist<A> {
     }
     concat(this: Dist<string>, ...dists: Dist<string>[]) {
         return Dist.concat(this, ...dists)
+            .withKey(null)
     }
     flat<T>(this: Dist<Dist<T>>) {
-        return this.map(x => x.pick())
+        return Dist.f(seed =>
+            this.pick(seed).pick(seed)
+        ).withKey(null)
     }
     flatMap<B>(f: (a: A) => Dist<B>): Dist<B> {
         return this.map(f).flat()
@@ -64,19 +83,27 @@ export abstract class Dist<A> {
         )
     }
     flatMatch<I extends A, O>(i: I, o: Dist<O>) {
-        return this.match(i, o.pick())
+        return Dist.f(seed => {
+            const x = this.pick(seed)
+            return x == i
+                ? o.pick(seed)
+                : x
+        }).withKey(null)
+    }
+    withKey(key: null | number = Math.random()) {
+        return new Dist(this.f, key)
     }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
     ) {
-        return Dist.f(() =>
+        return Dist.f(seed =>
             RecordLike.mapV(<A>(dist: Dist<A> | A) =>
                 dist instanceof Dist
-                    ? dist.pick()
+                    ? dist.pick(seed)
                     : dist
             )(dists) as Ts
-        )
+        ).withKey(null)
     }
     static concat(...dists: Dist<string>[]) {
         return Dist.cross(dists).map(x => x.join(""))
@@ -116,23 +143,16 @@ export abstract class Dist<A> {
                 "",
             ))
     }
-    static f<A>(pick: () => A) {
-        return new FuncDist(pick)
-    }
-}
-
-export class FuncDist<A> extends Dist<A> {
-    constructor(public pick: () => A) {
-        super()
+    static f<A>(pick: (seed: number) => A) {
+        return new Dist(pick)
     }
 }
 
 export class UniformDist<A> extends Dist<A> {
     constructor(public as: A[]) {
-        super()
-    }
-    pick() {
-        return this.as[Math.floor(Math.random()*this.as.length)]
+        super(seed =>
+            this.as[Math.floor(seed*this.as.length)]
+        )
     }
     or(...as: A[]) {
         return new UniformDist([...this.as, ...as])
