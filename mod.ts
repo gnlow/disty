@@ -1,9 +1,13 @@
 import { xxHash32 } from "https://esm.sh/js-xxhash@5.0.1"
 
+let keyCnt = 0
+export const getKey =
+() =>
+    "DISTY_"+keyCnt++
+
 export const hash =
-(key: number) =>
-(seed: number) =>
-    xxHash32(seed+";"+key, 0) / 2**32
+(...args: (number | string)[]) =>
+    xxHash32(args.join(";"), 0) / 2**32
 
 export const arr =
 (n: number) =>
@@ -36,12 +40,12 @@ export const RecordLike = {
 export class Dist<A> {
     constructor(
         readonly f: (seed: number) => A,
-        readonly key: null | number = Math.random(),
+        readonly key: null | number = hash(getKey(), f.toString()),
     ) {}
     pick(seed: number) {
         return this.key == null
             ? this.f(seed)
-            : this.f(hash(this.key)(seed))
+            : this.f(hash(this.key, seed))
     }
     
     map<B>(f: (a: A) => B) {
@@ -150,8 +154,10 @@ export class Dist<A> {
 
 export class UniformDist<A> extends Dist<A> {
     constructor(public as: A[]) {
-        super(seed =>
-            this.as[Math.floor(seed*this.as.length)]
+        super(
+            seed =>
+                this.as[Math.floor(seed*this.as.length)],
+            hash(getKey(), as+""),
         )
     }
     or(...as: A[]) {
