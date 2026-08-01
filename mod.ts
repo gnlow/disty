@@ -94,7 +94,7 @@ export class Dist<A> {
                 : x
         }).withKey(null)
     }
-    withKey(key: null | number = Math.random()) {
+    withKey(key: null | number = hash(getKey())) {
         return new Dist(this.f, key)
     }
     
@@ -124,14 +124,13 @@ export class Dist<A> {
             [0],
         ) 
         const wSum = is.at(-1)!
-        return Dist.f(() => {
-            const seed = Math.random()*wSum
-            return aws[is.findIndex(i => seed < i)-1][0]
+        return Dist.f(seed => {
+            return aws[is.findIndex(i => seed*wSum < i)-1][0]
         })
     }
     static p(p: number) {
-        return Dist.f(() =>
-            Math.random() < p
+        return Dist.f(seed =>
+            seed < p
         )
     }
     static range(a: number, b: number) {
