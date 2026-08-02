@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertThrows } from "https://esm.sh/jsr/@std/assert@1.0.19"
+import { assert, assertEquals, assertThrows, assertLess } from "https://esm.sh/jsr/@std/assert@1.0.19"
 import { Dist } from "../mod.ts"
 
 Deno.test("basic", () => {
@@ -49,4 +49,12 @@ Deno.test("flatMap", () => {
         )
     
     assertEquals(name.pick(0.123), name.pick(0.123))
+})
+
+Deno.test("morph", () => {
+    const r1 = Dist.range(0, 100)
+    const r2 = r1.morph(Dist.range(-100, 0))
+    const r1double = r1.map(x => x*2)
+    const c = Dist.cross([r2, r1double])
+    assertLess(c.pick(Math.random())[1], 0)
 })

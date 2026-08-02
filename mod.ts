@@ -39,15 +39,15 @@ export const RecordLike = {
 
 export class Dist<A> {
     constructor(
-        readonly f: (seed: number, destiny: Map<string, unknown>) => A,
+        readonly f: (seed: number, destiny: Map<string, Dist<unknown>>) => A,
         readonly key: null | string = getKey()+";"+f.toString(),
-        readonly destiny = new Map<string, unknown>,
+        readonly destiny = new Map<string, Dist<unknown>>,
     ) {}
-    pick(seed: number, destiny = this.destiny) {
+    pick(seed: number, destiny = this.destiny): A {
         if (this.key == null)
             return this.f(seed, destiny)
         const dest = destiny.get(this.key)
-        return (dest ?? this.f(hash(this.key, seed), destiny)) as A
+        return (dest?.pick(seed, this.destiny) ?? this.f(hash(this.key, seed), destiny)) as A
     }
     
     map<B>(f: (a: A) => B) {
@@ -58,25 +58,22 @@ export class Dist<A> {
             this.destiny,
         )
     }
-    destine(a: A) {
-        if (this.key == null)
-            throw new Error("can't destine mapped dist")
-        
-        return new Dist(
-            this.f,
-            this.key,
-            new Map([...this.destiny, [this.key, a]]),
-        )
+    destine(a: A): Dist<A> {
+        return this.apriori(this, a)
     }
-    apriori<B>(dist: Dist<B>, b: B) {
+    apriori<B>(dist: Dist<B>, b: B): Dist<A> {
+        return this.aprioriDist(dist, Dist.u([b]))
+    }
+    morph(d: Dist<A>) {
+        return this.aprioriDist(this, d)
+    }
+    aprioriDist<B>(dist: Dist<B>, b: Dist<B>) {
         if (dist.key == null)
             throw new Error("can't destine mapped dist")
+        
         return this.mergeDestiny(new Map([
             [dist.key, b]
         ]))
-    }
-    morph(d: Dist<A>) {
-        return d.withKey(this.key).mergeDestiny(this.destiny)
     }
     filter(f: (a: A) => boolean) {
         const rf =
@@ -126,7 +123,7 @@ export class Dist<A> {
     withKey(key: null | string = getKey()) {
         return new Dist(this.f, key, this.destiny)
     }
-    mergeDestiny(destiny: Map<string, unknown>) {
+    mergeDestiny(destiny: Map<string, Dist<unknown>>) {
         return new Dist(
             this.f,
             this.key,
