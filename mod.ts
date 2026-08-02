@@ -69,7 +69,7 @@ export class Dist<A> {
         )
     }
     morph(d: Dist<A>) {
-        return d
+        return d.withKey(this.key).mergeDestiny(this.destiny)
     }
     filter(f: (a: A) => boolean) {
         const rf =
