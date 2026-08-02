@@ -69,6 +69,8 @@ export class Dist<A> {
         )
     }
     apriori<B>(dist: Dist<B>, b: B) {
+        if (dist.key == null)
+            throw new Error("can't destine mapped dist")
         return this.mergeDestiny(new Map([
             [dist.key, b]
         ]))
