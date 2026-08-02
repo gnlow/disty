@@ -175,6 +175,12 @@ export class Dist<A> {
             seed < p
         )
     }
+    static n(mean = 0, sd = 1) {
+        return Dist.f(seed =>
+            Math.sqrt(-2*Math.log(hash(111, seed)))
+            *Math.cos(2*Math.PI*hash(222, seed))
+        ).map(y => mean+y*sd)
+    }
     static range(a: number, b: number) {
         return Dist.u(range(a, b))
     }
