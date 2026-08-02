@@ -57,4 +57,11 @@ Deno.test("morph", () => {
     const r1double = r1.map(x => x*2)
     const c = Dist.cross([r2, r1double])
     assertLess(c.pick(Math.random())[1], 0)
+    
+    const age = Dist.yet<number>()
+    const a2030 = age.morph(Dist.range(20, 30))
+    const birth = age.map(x => 2027-x)
+    const vv = Dist.cross({ a2030, birth })
+        .map(x => x.birth)
+    console.log(vv.pick(Math.random()))
 })
