@@ -36,25 +36,40 @@ export const RecordLike = {
             )
     ) as unknown as RecordLike<K, V2>,
 }
-    
+
 export class Dist<A> {
     constructor(
-        readonly f: (seed: number) => A,
+        readonly f: (seed: number, destiny: Map<string, unknown>) => A,
         readonly key: null | string = getKey()+";"+f.toString(),
+        readonly destiny = new Map<string, unknown>,
     ) {}
-    pick(seed: number) {
-        return this.key == null
-            ? this.f(seed)
-            : this.f(hash(this.key, seed))
+    pick(seed: number, destiny = this.destiny) {
+        if (this.key == null)
+            return this.f(seed, destiny)
+        const dest = destiny.get(this.key)
+        return (dest ?? this.f(hash(this.key, seed), destiny)) as A
     }
     
     map<B>(f: (a: A) => B) {
-        return Dist.f(seed =>
-            f(this.pick(seed))
-        ).withKey(null)
+        return new Dist(
+            (seed, destiny) =>
+                f(this.pick(seed, destiny)),
+            null,
+            this.destiny,
+        )
     }
     destine(a: A) {
-        return Dist.u([a]).withKey(null)
+        if (this.key == null)
+            throw new Error("can't destine mapped dist")
+        
+        return new Dist(
+            this.f,
+            this.key,
+            new Map([...this.destiny, [this.key, a]]),
+        )
+    }
+    morph(d: Dist<A>) {
+        return d
     }
     filter(f: (a: A) => boolean) {
         const rf =
@@ -62,7 +77,7 @@ export class Dist<A> {
             const p = this.pick(seed)
             return f(p) ? p : rf(seed)
         }
-        return Dist.f(rf).withKey(null)
+        return new Dist(rf, null, this.destiny)
     }
     cross<Ds extends unknown[]>(
         ...dists: Ds
@@ -74,9 +89,12 @@ export class Dist<A> {
             .withKey(null)
     }
     flat<T>(this: Dist<Dist<T>>) {
-        return Dist.f(seed =>
-            this.pick(seed).pick(seed)
-        ).withKey(null)
+        return new Dist(
+            seed =>
+                this.pick(seed).pick(seed),
+            null,
+            this.destiny,
+        )
     }
     flatMap<B>(f: (a: A) => Dist<B>): Dist<B> {
         return this.map(f).flat()
@@ -87,27 +105,47 @@ export class Dist<A> {
         )
     }
     flatMatch<I extends A, O>(i: I, o: Dist<O>) {
-        return Dist.f(seed => {
-            const x = this.pick(seed)
-            return x == i
-                ? o.pick(seed)
-                : x
-        }).withKey(null)
+        return new Dist(
+            seed => {
+                const x = this.pick(seed)
+                return x == i
+                    ? o.pick(seed)
+                    : x
+            },
+            null,
+            this.destiny,
+        )
     }
     withKey(key: null | string = getKey()) {
-        return new Dist(this.f, key)
+        return new Dist(this.f, key, this.destiny)
+    }
+    mergeDestiny(destiny: Map<string, unknown>) {
+        return new Dist(
+            this.f,
+            this.key,
+            new Map([...this.destiny, ...destiny]),
+        )
     }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
     ) {
-        return Dist.f(seed =>
-            RecordLike.mapV(<A>(dist: Dist<A> | A) =>
+        const destiny =
+            new Map(Object.values(dists).flatMap(<A>(dist: Dist<A> | A) =>
                 dist instanceof Dist
-                    ? dist.pick(seed)
-                    : dist
-            )(dists) as Ts
-        ).withKey(null)
+                    ? [...dist.destiny]
+                    : []
+            ))
+        return new Dist(
+            seed =>
+                RecordLike.mapV(<A>(dist: Dist<A> | A) =>
+                    dist instanceof Dist
+                        ? dist.pick(seed, destiny)
+                        : dist
+                )(dists) as Ts,
+            null,
+            destiny,
+        )
     }
     static concat(...dists: Dist<string>[]) {
         return Dist.cross(dists).map(x => x.join(""))
@@ -148,6 +186,11 @@ export class Dist<A> {
     }
     static f<A>(pick: (seed: number) => A) {
         return new Dist(pick)
+    }
+    static yet<A>() {
+        return Dist.f<A>(() => {
+            throw new Error("can't pick from abstract dist")
+        })
     }
 }
 

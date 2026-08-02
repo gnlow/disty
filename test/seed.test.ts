@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "https://esm.sh/jsr/@std/assert@1.0.19"
+import { assert, assertEquals, assertThrows } from "https://esm.sh/jsr/@std/assert@1.0.19"
 import { Dist } from "../mod.ts"
 
 Deno.test("basic", () => {
@@ -18,4 +18,31 @@ Deno.test("basic", () => {
     assertEquals(double.pick(456), double2.pick(456))
     assert(double.pick(456) != notDouble.pick(456))
     assertEquals(notDouble.pick(567), notDouble.pick(567))
+})
+
+Deno.test("destine", () => {
+    const id = Dist.f(seed => seed)
+    const double = id.map(x => x*2)
+    
+    id.destine(123)
+    assert(double.pick(Math.random()) != 246)
+    
+    const iwd = Dist.cross([id.destine(123), double])
+    console.log(iwd.destiny, iwd.pick(Math.random()))
+    assertEquals(iwd.pick(Math.random())[1], 246)
+    
+    assertThrows(() => double.destine(2345))
+})
+
+Deno.test("flatMap", () => {
+    const gender = Dist.u(["m", "f"] as const)
+    const m = Dist.u(["Mike", "Matt", "Michel"])
+    const f = Dist.u(["Fiona", "Fay", "Frances"])
+    const name = gender
+        .flatMap(g => g == "m"
+            ? m
+            : f
+        )
+    
+    assertEquals(name.pick(0.123), name.pick(0.123))
 })
