@@ -63,5 +63,5 @@ Deno.test("morph", () => {
     const vv = Dist.cross({ age: age, birth })
         .map(x => x.birth)
         .apriori(age, 25)
-    console.log(vv.pick(Math.random()))
+    assertEquals(vv.pick(Math.random()), 2002)
 })
