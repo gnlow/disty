@@ -68,6 +68,11 @@ export class Dist<A> {
             new Map([...this.destiny, [this.key, a]]),
         )
     }
+    apriori<B>(dist: Dist<B>, b: B) {
+        return this.mergeDestiny(new Map([
+            [dist.key, b]
+        ]))
+    }
     morph(d: Dist<A>) {
         return d.withKey(this.key).mergeDestiny(this.destiny)
     }

@@ -36,12 +36,16 @@ Deno.test("destine", () => {
 
 Deno.test("flatMap", () => {
     const gender = Dist.u(["m", "f"] as const)
-    const m = Dist.u(["Mike", "Matt", "Michel"])
-    const f = Dist.u(["Fiona", "Fay", "Frances"])
     const name = gender
         .flatMap(g => g == "m"
-            ? m
-            : f
+            ? Dist.u([
+                "Mike", "Matt", "Michel", "Marcus", "Mason",
+                "Matthew", "Miles", "Maxwell", "Milo", "Maverick",
+            ]).withKey("names")
+            : Dist.u([
+                  "Fiona", "Fay", "Frances", "Flora", "Faith",
+                  "Freya", "Felicia", "Farrah", "Francesca", "Fatima",
+            ]).withKey("names")
         )
     
     assertEquals(name.pick(0.123), name.pick(0.123))
