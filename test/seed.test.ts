@@ -59,9 +59,9 @@ Deno.test("morph", () => {
     assertLess(c.pick(Math.random())[1], 0)
     
     const age = Dist.yet<number>()
-    const a2030 = age.morph(Dist.range(20, 30))
     const birth = age.map(x => 2027-x)
-    const vv = Dist.cross({ a2030, birth })
+    const vv = Dist.cross({ age: age, birth })
         .map(x => x.birth)
+        .apriori(age, 25)
     console.log(vv.pick(Math.random()))
 })

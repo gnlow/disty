@@ -77,9 +77,9 @@ export class Dist<A> {
     }
     filter(f: (a: A) => boolean) {
         const rf =
-        (seed: number): A => {
-            const p = this.pick(seed)
-            return f(p) ? p : rf(seed)
+        (seed: number, destiny: typeof this.destiny): A => {
+            const p = this.pick(seed, destiny)
+            return f(p) ? p : rf(seed, destiny)
         }
         return new Dist(rf, null, this.destiny)
     }
@@ -94,8 +94,8 @@ export class Dist<A> {
     }
     flat<T>(this: Dist<Dist<T>>) {
         return new Dist(
-            seed =>
-                this.pick(seed).pick(seed),
+            (seed, destiny) =>
+                this.pick(seed, destiny).pick(seed, destiny),
             null,
             this.destiny,
         )
@@ -110,10 +110,10 @@ export class Dist<A> {
     }
     flatMatch<I extends A, O>(i: I, o: Dist<O>) {
         return new Dist(
-            seed => {
-                const x = this.pick(seed)
+            (seed, destiny) => {
+                const x = this.pick(seed, destiny)
                 return x == i
-                    ? o.pick(seed)
+                    ? o.pick(seed, destiny)
                     : x
             },
             null,
@@ -134,21 +134,21 @@ export class Dist<A> {
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
     ) {
-        const destiny =
+        const destinyUp =
             new Map(Object.values(dists).flatMap(<A>(dist: Dist<A> | A) =>
                 dist instanceof Dist
                     ? [...dist.destiny]
                     : []
             ))
         return new Dist(
-            seed =>
+            (seed, destinyDown) =>
                 RecordLike.mapV(<A>(dist: Dist<A> | A) =>
                     dist instanceof Dist
-                        ? dist.pick(seed, destiny)
+                        ? dist.pick(seed, destinyDown)
                         : dist
                 )(dists) as Ts,
             null,
-            destiny,
+            destinyUp,
         )
     }
     static concat(...dists: Dist<string>[]) {
