@@ -40,7 +40,7 @@ export const RecordLike = {
 export class Dist<A> {
     constructor(
         readonly f: (seed: number) => A,
-        readonly key: null | number = hash(getKey(), f.toString()),
+        readonly key: null | string = getKey()+";"+f.toString(),
     ) {}
     pick(seed: number) {
         return this.key == null
@@ -94,7 +94,7 @@ export class Dist<A> {
                 : x
         }).withKey(null)
     }
-    withKey(key: null | number = hash(getKey())) {
+    withKey(key: null | string = getKey()) {
         return new Dist(this.f, key)
     }
     
@@ -156,7 +156,7 @@ export class UniformDist<A> extends Dist<A> {
         super(
             seed =>
                 this.as[Math.floor(seed*this.as.length)],
-            hash(getKey(), as+""),
+            getKey()+";"+as,
         )
     }
     or(...as: A[]) {
