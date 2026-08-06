@@ -37,25 +37,34 @@ export const RecordLike = {
     ) as unknown as RecordLike<K, V2>,
 }
 
+type Destiny = Map<string, Dist<unknown>>
+interface Ctx {
+    destiny: Destiny
+    corr: Map<string, number>
+}
+
 export class Dist<A> {
     constructor(
-        readonly f: (seed: number, destiny: Map<string, Dist<unknown>>) => A,
+        readonly f: (seed: number, ctx: Ctx) => A,
         readonly key: null | string = getKey()+";"+f.toString(),
-        readonly destiny = new Map<string, Dist<unknown>>,
+        readonly ctx = {
+            destiny: new Map<string, Dist<unknown>>,
+            corr: new Map<string, number>,
+        },
     ) {}
-    pick(seed: number, destiny = this.destiny): A {
+    pick(seed: number, ctx = this.ctx): A {
         if (this.key == null)
-            return this.f(seed, destiny)
-        const dest = destiny.get(this.key)
-        return (dest?.pick(seed, this.destiny) ?? this.f(hash(this.key, seed), destiny)) as A
+            return this.f(seed, ctx)
+        const dest = ctx.destiny.get(this.key)
+        return (dest?.pick(seed, this.ctx) ?? this.f(hash(this.key, seed), ctx)) as A
     }
     
     map<B>(f: (a: A) => B) {
         return new Dist(
-            (seed, destiny) =>
-                f(this.pick(seed, destiny)),
+            (seed, ctx) =>
+                f(this.pick(seed, ctx)),
             null,
-            this.destiny,
+            this.ctx,
         )
     }
     destine(a: A): Dist<A> {
@@ -77,11 +86,11 @@ export class Dist<A> {
     }
     filter(f: (a: A) => boolean) {
         const rf =
-        (seed: number, destiny: typeof this.destiny): A => {
-            const p = this.pick(seed, destiny)
-            return f(p) ? p : rf(seed, destiny)
+        (seed: number, ctx: Ctx): A => {
+            const p = this.pick(seed, ctx)
+            return f(p) ? p : rf(seed, ctx)
         }
-        return new Dist(rf, null, this.destiny)
+        return new Dist(rf, null, this.ctx)
     }
     cross<Ds extends unknown[]>(
         ...dists: Ds
@@ -94,10 +103,10 @@ export class Dist<A> {
     }
     flat<T>(this: Dist<Dist<T>>) {
         return new Dist(
-            (seed, destiny) =>
-                this.pick(seed, destiny).pick(seed, destiny),
+            (seed, ctx) =>
+                this.pick(seed, ctx).pick(seed, ctx),
             null,
-            this.destiny,
+            this.ctx,
         )
     }
     flatMap<B>(f: (a: A) => Dist<B>): Dist<B> {
@@ -110,45 +119,50 @@ export class Dist<A> {
     }
     flatMatch<I extends A, O>(i: I, o: Dist<O>) {
         return new Dist(
-            (seed, destiny) => {
-                const x = this.pick(seed, destiny)
+            (seed, ctx) => {
+                const x = this.pick(seed, ctx)
                 return x == i
-                    ? o.pick(seed, destiny)
+                    ? o.pick(seed, ctx)
                     : x
             },
             null,
-            this.destiny,
+            this.ctx,
         )
     }
     withKey(key: null | string = getKey()) {
-        return new Dist(this.f, key, this.destiny)
+        return new Dist(this.f, key, this.ctx)
     }
     mergeDestiny(destiny: Map<string, Dist<unknown>>) {
         return new Dist(
             this.f,
             this.key,
-            new Map([...this.destiny, ...destiny]),
+            {
+                ...this.ctx,
+                destiny: new Map([...this.ctx.destiny, ...destiny]),
+            },
         )
     }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
     ) {
-        const destinyUp =
-            new Map(Object.values(dists).flatMap(<A>(dist: Dist<A> | A) =>
-                dist instanceof Dist
-                    ? [...dist.destiny]
-                    : []
-            ))
+        const ctxs = Object.values(dists)
+            .filter(dist => dist instanceof Dist)
+            .map(dist => dist.ctx)
+        const ctxUp = {
+            destiny: new Map(ctxs.flatMap(ctx => [...ctx.destiny])),
+            corr: new Map(ctxs.flatMap(ctx => [...ctx.corr])),
+        }
+        
         return new Dist(
-            (seed, destinyDown) =>
+            (seed, ctx) =>
                 RecordLike.mapV(<A>(dist: Dist<A> | A) =>
                     dist instanceof Dist
-                        ? dist.pick(seed, destinyDown)
+                        ? dist.pick(seed, ctx)
                         : dist
                 )(dists) as Ts,
             null,
-            destinyUp,
+            ctxUp,
         )
     }
     static concat(...dists: Dist<string>[]) {

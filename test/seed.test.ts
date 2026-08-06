@@ -28,7 +28,7 @@ Deno.test("destine", () => {
     assert(double.pick(Math.random()) != 246)
     
     const iwd = Dist.cross([id.destine(123), double])
-    console.log(iwd.destiny, iwd.pick(Math.random()))
+    console.log(iwd.ctx.destiny, iwd.pick(Math.random()))
     assertEquals(iwd.pick(Math.random())[1], 246)
     
     assertThrows(() => double.destine(2345))
