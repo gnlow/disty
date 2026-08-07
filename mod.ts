@@ -1,4 +1,6 @@
 import { xxHash32 } from "https://esm.sh/js-xxhash@5.0.1"
+import { Graph } from "./src/Graph.ts"
+import { getCondiDist } from "https://gnlow.dev/@learn/cholesky@0.1.0"
 
 let keyCnt = 0
 export const getKey =
@@ -40,8 +42,27 @@ export const RecordLike = {
 type Destiny = Map<string, Dist<unknown>>
 interface Ctx {
     destiny: Destiny
-    corr: Map<string, number>
+    corr: Graph<number>
 }
+
+export type Z = number & { __brand: "Z" }
+
+export const corrMulti =
+(covMat: number[][], ...ds: [number, number][]) => {
+    ds.forEach(([_x, r], i) => {
+        covMat[i].push(r)
+    })
+    covMat.push([...ds.map(([_x, r]) => r), 1])
+    const xs = ds.map(([x]) => x)
+    const { mean, variance } = getCondiDist(covMat, xs)
+    return Dist.n(mean, Math.sqrt(variance))
+}
+
+export const mergeCtx =
+(...ctxs: Ctx[]) => ({
+    destiny: new Map(ctxs.flatMap(ctx => [...ctx.destiny])),
+    corr: new Graph(ctxs.flatMap(ctx => [...ctx.corr.raw])),
+})
 
 export class Dist<A> {
     constructor(
@@ -49,12 +70,12 @@ export class Dist<A> {
         readonly key: null | string = getKey()+";"+f.toString(),
         readonly ctx = {
             destiny: new Map<string, Dist<unknown>>,
-            corr: new Map<string, number>,
+            corr: new Graph<number>,
         },
     ) {}
     pick(seed: number, ctx = this.ctx): A {
         if (this.key == null)
-            return this.f(seed, ctx)
+            return this.f(seed, mergeCtx(this.ctx, ctx))
         const dest = ctx.destiny.get(this.key)
         return (dest?.pick(seed, this.ctx) ?? this.f(hash(this.key, seed), ctx)) as A
     }
@@ -83,6 +104,40 @@ export class Dist<A> {
         return this.mergeDestiny(new Map([
             [dist.key, b]
         ]))
+    }
+    co(this: Dist<Z>, dist: Dist<Z>, r: number) {
+        const key = getKey()
+        
+        if (this.key == null || dist.key == null) {
+            throw new Error("co with mapped dist not yet supported") // todo
+        }
+        
+        return new Dist(
+            (seed, ctx) => {
+                const vs = ctx.corr.getConnectedNodes(key)
+                if (!vs.every(v => ctx.destiny.get(v))) {
+                    throw new Error("one or more dependency are not destined") // todo
+                }
+                corrMulti(
+                    vs.map(v1 => vs.map(v2 =>
+                        ctx.corr.dfsW(v1, v2)
+                            .reduce((a, b) => a*b, 1)
+                    )),
+                    ...vs.map(v => [
+                        ctx.destiny.get(v)!.pick(seed, ctx) as number,
+                        ctx.corr.dfsW(v, key)
+                            .reduce((a, b) => a*b, 1),
+                    ] as [number, number]),
+                ).pick(seed)
+            },
+            key,
+            {
+                ...this.ctx,
+                corr: this.ctx.corr
+                    .add(this.key, key, 1)
+                    .add(key, dist.key, r),
+            },
+        )
     }
     filter(f: (a: A) => boolean) {
         const rf =
@@ -132,7 +187,7 @@ export class Dist<A> {
     withKey(key: null | string = getKey()) {
         return new Dist(this.f, key, this.ctx)
     }
-    mergeDestiny(destiny: Map<string, Dist<unknown>>) {
+    mergeDestiny(destiny: Destiny) {
         return new Dist(
             this.f,
             this.key,
@@ -142,6 +197,16 @@ export class Dist<A> {
             },
         )
     }
+    appendCorr(key1: string, key2: string, r: number) {
+        return new Dist(
+            this.f,
+            this.key,
+            {
+                ...this.ctx,
+                corr: this.ctx.corr.add(key1, key2, r),
+            },
+        )
+    } 
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
@@ -151,7 +216,7 @@ export class Dist<A> {
             .map(dist => dist.ctx)
         const ctxUp = {
             destiny: new Map(ctxs.flatMap(ctx => [...ctx.destiny])),
-            corr: new Map(ctxs.flatMap(ctx => [...ctx.corr])),
+            corr: Graph.union<number>(...ctxs.flatMap(ctx => ctx.corr)),
         }
         
         return new Dist(
@@ -189,11 +254,14 @@ export class Dist<A> {
             seed < p
         )
     }
+    static n(): Dist<Z>
+    static n(mean?: number, sd?: number): Dist<number>
     static n(mean = 0, sd = 1) {
         return Dist.f(seed =>
             Math.sqrt(-2*Math.log(hash(111, seed)))
             *Math.cos(2*Math.PI*hash(222, seed))
-        ).map(y => mean+y*sd)
+        ).map(y => mean+y*sd as Z)
+            .withKey() // todo: let mapped dist have unique key too
     }
     static range(a: number, b: number) {
         return Dist.u(range(a, b))
