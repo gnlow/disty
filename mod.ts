@@ -115,10 +115,11 @@ export class Dist<A> {
         return new Dist(
             (seed, ctx) => {
                 const vs = ctx.corr.getConnectedNodes(key)
+                    .filter(x => x != key)
                 if (!vs.every(v => ctx.destiny.get(v))) {
                     throw new Error("one or more dependency are not destined") // todo
                 }
-                corrMulti(
+                return corrMulti(
                     vs.map(v1 => vs.map(v2 =>
                         ctx.corr.dfsW(v1, v2)
                             .reduce((a, b) => a*b, 1)
@@ -134,7 +135,7 @@ export class Dist<A> {
             {
                 ...this.ctx,
                 corr: this.ctx.corr
-                    .add(this.key, key, 1)
+                    //.add(this.key, key, 1)
                     .add(key, dist.key, r),
             },
         )

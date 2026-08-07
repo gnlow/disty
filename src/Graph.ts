@@ -1,3 +1,4 @@
+const sep = ";{Graph};"
 export class Graph<T> {
     readonly raw: Map<string, T>
     constructor(
@@ -22,8 +23,8 @@ export class Graph<T> {
     }
     getNeighbors(key: string) {
         return this.raw.keys()
-            .filter(x => x.split(";").includes(key))
-            .map(x => x.split(";").filter(x => x != key)[0])
+            .filter(x => x.split(sep).includes(key))
+            .map(x => x.split(sep).filter(x => x != key)[0])
             .toArray()
     }
     getConnectedNodes(from: string, except = from): string[] {
@@ -56,6 +57,6 @@ export class Graph<T> {
         return this.vs2es(vs).map(e => this.raw.get(e)!)
     }
     static getEKey(a: string, b: string) {
-        return [a, b].toSorted().join(";")
+        return [a, b].toSorted().join(sep)
     }
 }
