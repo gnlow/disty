@@ -1,6 +1,7 @@
 import { xxHash32 } from "https://esm.sh/js-xxhash@5.0.1"
 import { Graph } from "./src/Graph.ts"
 import { getCondiDist } from "https://gnlow.dev/@learn/cholesky@0.1.0"
+import { LogLogistic } from "https://gnlow.dev/@learn/log-logistic@0.1.0"
 
 let keyCnt = 0
 export const getKey =
@@ -139,6 +140,7 @@ export class Dist<A> {
                     .add(key, dist.key, r),
             },
         )
+        .aprioriDist(dist, dist)
     }
     filter(f: (a: A) => boolean) {
         const rf =
@@ -188,6 +190,7 @@ export class Dist<A> {
     withKey(key: null | string = getKey()) {
         return new Dist(this.f, key, this.ctx)
     }
+    
     mergeDestiny(destiny: Destiny) {
         return new Dist(
             this.f,
@@ -263,6 +266,12 @@ export class Dist<A> {
             *Math.cos(2*Math.PI*hash(222, seed))
         ).map(y => mean+y*sd as Z)
             .withKey() // todo: let mapped dist have unique key too
+    }
+    static ll(peak: number, mean: number) {
+        return Dist.f(seed =>
+            LogLogistic.fromPeakMean(peak, mean)
+                .icdf(seed)
+        )
     }
     static range(a: number, b: number) {
         return Dist.u(range(a, b))
