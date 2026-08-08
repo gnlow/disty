@@ -294,6 +294,7 @@ export class Dist<A> {
             throw new Error("can't pick from abstract dist")
         })
     }
+    static keyStack = []
 }
 
 export class UniformDist<A> extends Dist<A> {
