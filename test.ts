@@ -18,7 +18,7 @@ const person = Dist.cross({
 })
 
 console.log(arr(10).map(i => [
-    person.pick(i),
+    person.pick(i+""),
 ]))
 
 Dist.u([1]).cross(Dist.u([2])) satisfies Dist<[number, number]>

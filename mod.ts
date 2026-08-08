@@ -4,8 +4,14 @@ import { getCondiDist } from "https://gnlow.dev/@learn/cholesky@0.1.0"
 import { LogLogistic } from "https://gnlow.dev/@learn/log-logistic@0.1.0"
 
 export const hash =
-(...args: (number | string)[]) =>
+(...args: unknown[]) =>
     xxHash32(JSON.stringify(args), 0) / 2**32
+
+export const hashStr =
+(...args: unknown[]) =>
+    xxHash32(JSON.stringify(args), 0)
+        .toString(16)
+        .padStart(8, "0")
 
 export const arr =
 (n: number) =>
@@ -62,31 +68,28 @@ export const mergeCtx =
 
 export class Dist<A> {
     constructor(
-        readonly f: (seed: number, ctx: Ctx) => A,
-        readonly key: null | string = Dist.getKey()+";"+f.toString(),
-        readonly ctx = {
-            destiny: new Map<string, Dist<unknown>>,
-            corr: new Graph<number>,
-        },
+        readonly f: (seed: string, ctx: Ctx) => A,
+        readonly ctx: Ctx,
+        readonly key: string,
+        __CONSTRUCTOR_IS_INTERNAL_ONLY__: "OK"
     ) {}
-    pick(seed: number, ctx = this.ctx): A {
-        if (this.key == null)
-            return this.f(seed, mergeCtx(this.ctx, ctx))
+    pick(seed: string, ctx = this.ctx): A {
         const dest = ctx.destiny.get(this.key)
-        return (dest?.pick(seed, this.ctx) ?? this.f(hash(this.key, seed), ctx)) as A
+        return (dest?.pick(seed, this.ctx) ?? this.f(seed, ctx)) as A
     }
     
     map<B>(f: (a: A) => B) {
-        return new Dist(
+        const d = Dist.rawF(
             (seed, ctx) => {
                 Dist.pushKey(this.key)
                 const res = f(this.pick(seed, ctx))
                 Dist.popKey()
                 return res
             },
-            null,
             this.ctx,
         )
+        d.isMapped = true
+        return d
     }
     destine(a: A): Dist<A> {
         return this.apriori(this, a)
@@ -97,8 +100,9 @@ export class Dist<A> {
     morph(d: Dist<A>) {
         return this.aprioriDist(this, d)
     }
+    isMapped = false
     aprioriDist<B>(dist: Dist<B>, b: Dist<B>) {
-        if (dist.key == null)
+        if (dist.isMapped)
             throw new Error("can't destine mapped dist")
         
         return this.mergeDestiny(new Map([
@@ -108,11 +112,7 @@ export class Dist<A> {
     co(this: Dist<Z>, dist: Dist<Z>, r: number) {
         const key = Dist.getKey()
         
-        if (this.key == null || dist.key == null) {
-            throw new Error("co with mapped dist not yet supported") // todo
-        }
-        
-        return new Dist(
+        return Dist.rawF(
             (seed, ctx) => {
                 const vs = ctx.corr.getConnectedNodes(key)
                     .filter(x => x != key)
@@ -131,23 +131,23 @@ export class Dist<A> {
                     ] as [number, number]),
                 ).pick(seed)
             },
-            key,
             {
                 ...this.ctx,
                 corr: this.ctx.corr
                     //.add(this.key, key, 1)
                     .add(key, dist.key, r),
             },
+            key,
         )
         .aprioriDist(dist, dist)
     }
     filter(f: (a: A) => boolean) {
         const rf =
-        (seed: number, ctx: Ctx): A => {
+        (seed: string, ctx: Ctx): A => {
             const p = this.pick(seed, ctx)
             return f(p) ? p : rf(seed, ctx)
         }
-        return new Dist(rf, null, this.ctx)
+        return Dist.rawF(rf, this.ctx)
     }
     cross<Ds extends unknown[]>(
         ...dists: Ds
@@ -156,13 +156,11 @@ export class Dist<A> {
     }
     concat(this: Dist<string>, ...dists: Dist<string>[]) {
         return Dist.concat(this, ...dists)
-            .withKey(null)
     }
     flat<T>(this: Dist<Dist<T>>) {
-        return new Dist(
+        return Dist.rawF(
             (seed, ctx) =>
                 this.pick(seed, ctx).pick(seed, ctx),
-            null,
             this.ctx,
         )
     }
@@ -175,39 +173,46 @@ export class Dist<A> {
         )
     }
     flatMatch<I extends A, O>(i: I, o: Dist<O>) {
-        return new Dist(
+        return Dist.rawF(
             (seed, ctx) => {
                 const x = this.pick(seed, ctx)
                 return x == i
                     ? o.pick(seed, ctx)
                     : x
             },
-            null,
             this.ctx,
         )
     }
-    withKey(key: null | string = Dist.getKey()) {
-        return new Dist(this.f, key, this.ctx)
+    withKey(key = Dist.getKey()) {
+        return Dist.rawF(this.f, this.ctx, key)
+    }
+    branch(key = Dist.getKey()) {
+        return Dist.rawF(
+            (seed, ctx) =>
+                this.f(hashStr(key, seed), ctx),
+            this.ctx,
+            key,
+        )
     }
     
     mergeDestiny(destiny: Destiny) {
-        return new Dist(
+        return Dist.rawF(
             this.f,
-            this.key,
             {
                 ...this.ctx,
                 destiny: new Map([...this.ctx.destiny, ...destiny]),
             },
+            this.key,
         )
     }
     appendCorr(key1: string, key2: string, r: number) {
-        return new Dist(
+        return Dist.rawF(
             this.f,
-            this.key,
             {
                 ...this.ctx,
                 corr: this.ctx.corr.add(key1, key2, r),
             },
+            this.key,
         )
     } 
     
@@ -222,14 +227,13 @@ export class Dist<A> {
             corr: Graph.union<number>(...ctxs.flatMap(ctx => ctx.corr)),
         }
         
-        return new Dist(
+        return Dist.rawF(
             (seed, ctx) =>
                 RecordLike.mapV(<A>(dist: Dist<A> | A) =>
                     dist instanceof Dist
                         ? dist.pick(seed, ctx)
                         : dist
                 )(dists) as Ts,
-            null,
             ctxUp,
         )
     }
@@ -237,7 +241,9 @@ export class Dist<A> {
         return Dist.cross(dists).map(x => x.join(""))
     }
     static u<A>(as: A[]) {
-        return new UniformDist(as)
+        return Dist.f(seed =>
+            as[Math.floor(seed*as.length)]
+        )
     }
     static w<A>(aws: [A, number][]) {
         const ws = aws
@@ -264,7 +270,6 @@ export class Dist<A> {
             Math.sqrt(-2*Math.log(hash(111, seed)))
             *Math.cos(2*Math.PI*hash(222, seed))
         ).map(y => mean+y*sd as Z)
-            .withKey() // todo: let mapped dist have unique key too
     }
     static ll(peak: number, mean: number) {
         return Dist.f(seed =>
@@ -285,16 +290,40 @@ export class Dist<A> {
                 "",
             ))
     }
-    static f<A>(pick: (seed: number) => A) {
-        return new Dist(pick)
+    static f<A>(
+        pick: (seed: number) => A,
+        ctx?: Ctx,
+        key?: string,
+    ) {
+        const d: Dist<A> = Dist.rawF(
+            seed => pick(hash(d.key, seed)),
+            ctx,
+            key,
+        )
+        return d
+    }
+    static rawF<A>(
+        pick: (seed: string, ctx: Ctx) => A,
+        ctx = {
+            destiny: new Map<string, Dist<unknown>>,
+            corr: new Graph<number>,
+        },
+        key = Dist.getKey(),
+    ) {
+        return new Dist(
+            pick,
+            ctx,
+            key,
+            "OK",
+        )
     }
     static yet<A>() {
         return Dist.f<A>(() => {
             throw new Error("can't pick from abstract dist")
         })
     }
-    static keyStack: { key: string | null, cnt: number }[] = [{ key: "DISTY!", cnt: 0 }]
-    static pushKey(key: string | null) {
+    static keyStack: { key: string, cnt: number }[] = [{ key: "DISTY!", cnt: 0 }]
+    static pushKey(key: string) {
         this.keyStack.push({ key, cnt: 0 })
     }
     static popKey() {
@@ -302,19 +331,6 @@ export class Dist<A> {
     }
     static getKey() {
         this.keyStack.at(-1)!.cnt++
-        return xxHash32(JSON.stringify(this.keyStack)).toString(16)
-    }
-}
-
-export class UniformDist<A> extends Dist<A> {
-    constructor(public as: A[]) {
-        super(
-            seed =>
-                this.as[Math.floor(seed*this.as.length)],
-            Dist.getKey()+";"+as,
-        )
-    }
-    or(...as: A[]) {
-        return new UniformDist([...this.as, ...as])
+        return hashStr(...this.keyStack)
     }
 }

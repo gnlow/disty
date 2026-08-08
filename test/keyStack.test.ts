@@ -7,10 +7,10 @@ Deno.test("keyStack", () => {
     const d2 = Dist.f(s => s)
         .flatMap(s1 => Dist.f(s2 => JSON.stringify([s1, s2])))
     
-    assertEquals(d.pick(0.123), d.pick(0.123))
-    assertNotEquals(d.pick(0.123), d2.pick(0.123))
+    assertEquals(d.pick("123"), d.pick("123"))
+    assertNotEquals(d.pick("123"), d2.pick("123"))
     assertNotEquals(
-        Dist.f(s => s).pick(0.123),
-        Dist.f(s => s).pick(0.123),
+        Dist.f(s => s).pick("123"),
+        Dist.f(s => s).pick("123"),
     )
 })
