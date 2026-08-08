@@ -102,7 +102,7 @@ export class Dist<A> {
     }
     isMapped = false
     aprioriDist<B>(dist: Dist<B>, b: Dist<B>) {
-        if (dist.isMapped)
+        if (dist.isMapped && dist != b)
             throw new Error("can't destine mapped dist")
         
         return this.mergeDestiny(new Map([
@@ -267,9 +267,11 @@ export class Dist<A> {
     static n(mean?: number, sd?: number): Dist<number>
     static n(mean = 0, sd = 1) {
         return Dist.f(seed =>
-            Math.sqrt(-2*Math.log(hash(111, seed)))
+            mean
+            +Math.sqrt(-2*Math.log(hash(111, seed)))
             *Math.cos(2*Math.PI*hash(222, seed))
-        ).map(y => mean+y*sd as Z)
+            *sd as Z
+        )
     }
     static ll(peak: number, mean: number) {
         return Dist.f(seed =>
