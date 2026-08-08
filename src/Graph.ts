@@ -27,10 +27,13 @@ export class Graph<T> {
             .map(x => x.split(sep).filter(x => x != key)[0])
             .toArray()
     }
-    getConnectedNodes(from: string, except = from): string[] {
-        return [from, ...this.getNeighbors(from)
-            .filter(x => x != except)
-            .flatMap(next => this.getConnectedNodes(next, from))]
+    getConnectedNodes(from: string, except = new Set([from])): string[] {
+        const res = this.getNeighbors(from)
+            .filter(x => !except.has(x))
+            
+        return new Set([from, ...res.flatMap(next =>
+            this.getConnectedNodes(next, new Set([...except.values(), from]))
+        )]).values().toArray()
     }
     dfs(from: string, to: string, visited = new Set<string>): string[][] {
         if (from == to) return [[to]]

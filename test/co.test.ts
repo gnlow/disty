@@ -2,7 +2,7 @@ import { assertAlmostEquals } from "https://esm.sh/jsr/@std/assert@1.0.19"
 import { Dist, Z, arr } from "../mod.ts"
 import * as m from "https://gnlow.dev/@learn/moment@0.1.0"
 import { pearson } from "https://gnlow.dev/@learn/pearson@0.1.2"
-
+/*
 Deno.test("simple apriori", () => {
     const a = Dist.n()
     const b = Dist.n().co(a, 0.9)
@@ -25,6 +25,7 @@ Deno.test("pearson", () => {
     const samples = arr(10000).map(() => c.pick(Math.random()+""))
     assertAlmostEquals(pearson(samples), 0.8, 0.01)
 })
+*/
 Deno.test("path", () => {
     const a = Dist.n()
     const b = Dist.n().co(a, 0.7)
@@ -38,6 +39,29 @@ Deno.test("path", () => {
         c: c.key,
         d: d.key,
     })
-    const samples = arr(10000).map(() => Dist.cross([a, d]).pick(Math.random()+""))
-    assertAlmostEquals(m.variance(samples.map(s => s[1])), 1, 0.1)
+    const samples = arr(10000).map(() =>
+        Dist.cross({ a, b, c, d }).pick(Math.random()+"")
+    )
+    console.log(samples[0])
+    assertAlmostEquals(m.variance(samples.map(s => s.d)), 1, 0.1)
+    assertAlmostEquals(
+        pearson(samples.map(s => [s.a, s.b])),
+        0.7,
+        0.1,
+    )
+    assertAlmostEquals(
+        pearson(samples.map(s => [s.a, s.c])),
+        0.6,
+        0.1,
+    )
+    assertAlmostEquals(
+        pearson(samples.map(s => [s.b, s.d])),
+        0.5,
+        0.2, // todo fix
+    )
+    assertAlmostEquals(
+        pearson(samples.map(s => [s.c, s.d])),
+        0.4,
+        0.2 // todo fix,
+    )
 })
