@@ -32,22 +32,23 @@ export class Graph<T> {
             .filter(x => x != except)
             .flatMap(next => this.getConnectedNodes(next, from))]
     }
-    dfs(from: string, to: string, visited = new Set<string>): string[] | null {
-        if (from == to) return [to]
+    dfs(from: string, to: string, visited = new Set<string>): string[][] {
+        if (from == to) return [[to]]
         const neighbors = this.getNeighbors(from)
             .filter(x => !visited.has(x))
-        if (neighbors.length == 0) return null
+        if (neighbors.length == 0) return []
         
-        const path = neighbors
-            .map(x => this.dfs(x, to, new Set([...visited, from])))
-            .find(x => x != null)
-        
-        return path
-            ? [from, ...path]
-            : null
+        return neighbors
+            .flatMap(x => this.dfs(x, to, new Set([...visited, from])))
+            .map(x => [from, ...x])
     }
     dfsW(from: string, to: string) {
-        return this.vs2ws(this.dfs(from, to) || [])
+        return this.dfs(from, to).map(path => this.vs2ws(path))
+    }
+    pathRule(this: Graph<number>, from: string, to: string) {
+        return this.dfsW(from, to)
+            .map(path => path.reduce((a, b) => a*b, 1))
+            .reduce((a, b) => a+b, 0)
     }
     vs2es(vs: string[]) {
         return vs.slice(0, -1).keys().toArray()
