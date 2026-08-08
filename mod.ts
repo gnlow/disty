@@ -3,14 +3,9 @@ import { Graph } from "./src/Graph.ts"
 import { getCondiDist } from "https://gnlow.dev/@learn/cholesky@0.1.0"
 import { LogLogistic } from "https://gnlow.dev/@learn/log-logistic@0.1.0"
 
-let keyCnt = 0
-export const getKey =
-() =>
-    "DISTY_"+keyCnt++
-
 export const hash =
 (...args: (number | string)[]) =>
-    xxHash32(args.join(";"), 0) / 2**32
+    xxHash32(JSON.stringify(args), 0) / 2**32
 
 export const arr =
 (n: number) =>
@@ -68,7 +63,7 @@ export const mergeCtx =
 export class Dist<A> {
     constructor(
         readonly f: (seed: number, ctx: Ctx) => A,
-        readonly key: null | string = getKey()+";"+f.toString(),
+        readonly key: null | string = Dist.getKey()+";"+f.toString(),
         readonly ctx = {
             destiny: new Map<string, Dist<unknown>>,
             corr: new Graph<number>,
@@ -83,8 +78,12 @@ export class Dist<A> {
     
     map<B>(f: (a: A) => B) {
         return new Dist(
-            (seed, ctx) =>
-                f(this.pick(seed, ctx)),
+            (seed, ctx) => {
+                Dist.pushKey(this.key)
+                const res = f(this.pick(seed, ctx))
+                Dist.popKey()
+                return res
+            },
             null,
             this.ctx,
         )
@@ -107,7 +106,7 @@ export class Dist<A> {
         ]))
     }
     co(this: Dist<Z>, dist: Dist<Z>, r: number) {
-        const key = getKey()
+        const key = Dist.getKey()
         
         if (this.key == null || dist.key == null) {
             throw new Error("co with mapped dist not yet supported") // todo
@@ -187,7 +186,7 @@ export class Dist<A> {
             this.ctx,
         )
     }
-    withKey(key: null | string = getKey()) {
+    withKey(key: null | string = Dist.getKey()) {
         return new Dist(this.f, key, this.ctx)
     }
     
@@ -294,7 +293,17 @@ export class Dist<A> {
             throw new Error("can't pick from abstract dist")
         })
     }
-    static keyStack = []
+    static keyStack: { key: string | null, cnt: number }[] = [{ key: "DISTY!", cnt: 0 }]
+    static pushKey(key: string | null) {
+        this.keyStack.push({ key, cnt: 0 })
+    }
+    static popKey() {
+        this.keyStack.pop()
+    }
+    static getKey() {
+        this.keyStack.at(-1)!.cnt++
+        return xxHash32(JSON.stringify(this.keyStack)).toString(16)
+    }
 }
 
 export class UniformDist<A> extends Dist<A> {
@@ -302,7 +311,7 @@ export class UniformDist<A> extends Dist<A> {
         super(
             seed =>
                 this.as[Math.floor(seed*this.as.length)],
-            getKey()+";"+as,
+            Dist.getKey()+";"+as,
         )
     }
     or(...as: A[]) {
