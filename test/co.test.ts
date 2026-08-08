@@ -27,11 +27,11 @@ Deno.test("pearson", () => {
 })*/
 Deno.test("path", () => {
     const a = Dist.n()
-    const b = Dist.n().co(a, 0.7)
-    const c = Dist.n().co(a, 0.6)
+    const b = Dist.n().dep(a, 0.7)
+    const c = Dist.n().dep(a, 0.6)
     const d = Dist.n()
-        .co(b, 0.5)
-        .co(c, 0.4)
+        .dep(b, 0.5)
+        .dep(c, 0.4)
     console.log({
         a: a.key,
         b: b.key,
@@ -39,5 +39,5 @@ Deno.test("path", () => {
         d: d.key,
     })
     const samples = arr(10000).map(() => Dist.cross([a, d]).pick(Math.random()+""))
-    console.log(pearson(samples))
+    console.log(m.variance(samples.map(x => x[1])))
 })

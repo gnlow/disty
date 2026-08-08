@@ -109,14 +109,15 @@ export class Dist<A> {
             [dist.key, b]
         ]))
     }
-    co(this: Dist<Z>, dist: Dist<Z>, r: number) {
+    dep(this: Dist<Z>, dist: Dist<Z>, r: number) {
         return Dist.rawF(
             (seed, ctx) => {
-                const vs = ctx.corr.getConnectedNodes(this.key)
+                const vs = ctx.corr.getBackwardReachableNodes(this.key)
                     .filter(x => x != this.key)
                 if (!vs.every(v => ctx.destiny.get(v))) {
                     throw new Error("one or more dependency are not destined") // todo
                 }
+                
                 return corrMulti(
                     vs.map(v1 => vs.map(v2 =>
                         ctx.corr.pathRule(v1, v2)
@@ -130,7 +131,7 @@ export class Dist<A> {
             {
                 ...this.ctx,
                 corr: this.ctx.corr
-                    .add(this.key, dist.key, r),
+                    .add(dist.key, this.key, r),
             },
             this.key,
         )

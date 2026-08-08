@@ -21,20 +21,26 @@ export class Graph<T> {
     static union<T>(...gs: Graph<T>[]) {
         return new Graph(new Map(gs.flatMap(g => [...g.raw])))
     }
-    getNeighbors(key: string) {
+    getInNeighbors(key: string) {
         return this.raw.keys()
-            .filter(x => x.split(sep).includes(key))
-            .map(x => x.split(sep).filter(x => x != key)[0])
+            .filter(x => x.split(sep)[1] == key)
+            .map(x => x.split(sep)[0])
             .toArray()
     }
-    getConnectedNodes(from: string, except = from): string[] {
-        return [from, ...this.getNeighbors(from)
+    getOutNeighbors(key: string) {
+        return this.raw.keys()
+            .filter(x => x.split(sep)[0] == key)
+            .map(x => x.split(sep)[1])
+            .toArray()
+    }
+    getBackwardReachableNodes(from: string, except = from): string[] {
+        return [from, ...this.getInNeighbors(from)
             .filter(x => x != except)
-            .flatMap(next => this.getConnectedNodes(next, from))]
+            .flatMap(next => this.getBackwardReachableNodes(next, from))]
     }
     dfs(from: string, to: string, visited = new Set<string>): string[][] {
         if (from == to) return [[to]]
-        const neighbors = this.getNeighbors(from)
+        const neighbors = this.getOutNeighbors(from)
             .filter(x => !visited.has(x))
         if (neighbors.length == 0) return []
         
@@ -58,6 +64,6 @@ export class Graph<T> {
         return this.vs2es(vs).map(e => this.raw.get(e)!)
     }
     static getEKey(a: string, b: string) {
-        return [a, b].toSorted().join(sep)
+        return [a, b].join(sep)
     }
 }
