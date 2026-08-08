@@ -183,9 +183,6 @@ export class Dist<A> {
             this.ctx,
         )
     }
-    withKey(key = Dist.getKey()) {
-        return Dist.rawF(this.f, this.ctx, key)
-    }
     branch(key = Dist.getKey()) {
         return Dist.rawF(
             (seed, ctx) =>
