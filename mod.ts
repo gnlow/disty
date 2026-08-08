@@ -112,8 +112,7 @@ export class Dist<A> {
     co(this: Dist<Z>, dist: Dist<Z>, r: number) {
         return Dist.rawF(
             (seed, ctx) => {
-                const vs = ctx.corr.getConnectedNodes(this.key)
-                    .filter(x => x != this.key)
+                const vs = ctx.corr.getNeighbors(this.key)
                 if (!vs.every(v => ctx.destiny.get(v))) {
                     throw new Error("one or more dependency are not destined") // todo
                 }
@@ -123,7 +122,7 @@ export class Dist<A> {
                     )),
                     ...vs.map(v => [
                         ctx.destiny.get(v)!.pick(seed, ctx) as number,
-                        ctx.corr.pathRule(v, this.key),
+                        ctx.corr.getW(v, this.key)!,
                     ] as [number, number]),
                 ).pick(seed) as Z
             },
@@ -206,7 +205,10 @@ export class Dist<A> {
             },
             this.key,
         )
-    } 
+    }
+    sample(n: number) {
+        return arr(n).map(i => this.pick("sample"+i))
+    }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },

@@ -63,4 +63,7 @@ export class Graph<T> {
     static getEKey(a: string, b: string) {
         return [a, b].toSorted().join(sep)
     }
+    getW(a: string, b: string) {
+        return this.raw.get(Graph.getEKey(a, b))
+    }
 }
