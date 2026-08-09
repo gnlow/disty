@@ -139,7 +139,7 @@ export class Dist<A> {
         const rf =
         (seed: string, ctx: Ctx): A => {
             const p = this.pick(seed, ctx)
-            return f(p) ? p : rf(seed, ctx)
+            return f(p) ? p : rf(hashStr(seed, "rf"), ctx)
         }
         return Dist.rawF(rf, this.ctx)
     }
