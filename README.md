@@ -4,5 +4,5 @@
 </p>
 
 ```ts
-import { Dist } from "https://gnlow.dev/disty
+import { Dist } from "https://gnlow.dev/disty"
 ```
