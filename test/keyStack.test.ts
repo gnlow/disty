@@ -14,9 +14,3 @@ Deno.test("keyStack", () => {
         Dist.f(s => s).pick("123"),
     )
 })
-
-Deno.test("pick with default seed", () => {
-    const l = Dist.n().map(x => [x, Dist.n().pick()])
-    assertEquals(l.pick("hello"), l.pick("hello"))
-    assertNotEquals(Dist.n().pick(), Dist.n().pick())
-})

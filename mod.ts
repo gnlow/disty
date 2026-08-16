@@ -73,7 +73,7 @@ export class Dist<A> {
         readonly key: string,
         __CONSTRUCTOR_IS_INTERNAL_ONLY__: "OK"
     ) {}
-    pick(seed = Dist.getKey(), ctx = this.ctx): A {
+    pick(seed: string, ctx = this.ctx): A {
         const dest = ctx.destiny.get(this.key)
         return (dest?.pick(seed, this.ctx) ?? this.f(seed, ctx)) as A
     }
