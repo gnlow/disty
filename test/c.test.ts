@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://esm.sh/jsr/@std/assert@1.0.19"
+import { assertEquals } from "https://esm.sh/jsr/@std/assert@1.0.19"
 import { Dist } from "../mod.ts"
 
 Deno.test("c", () => {
@@ -7,9 +7,12 @@ Deno.test("c", () => {
     })
     class Human extends human.c() {
         greet() {
-            console.log(`Hello, my name is ${this.name}`)
+            return `Hello, my name is ${this.name}`
         }
     }
     const human1 = new Human("hi")
-    human1.greet()
+    assertEquals(
+        human1.greet(),
+        "Hello, my name is James",
+    )
 })
