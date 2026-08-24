@@ -209,6 +209,12 @@ export class Dist<A> {
     sample(n: number) {
         return arr(n).map(i => this.pick("sample"+i))
     }
+    join(this: Dist<string[]>, delim?: string) {
+        return this.map(s => s.join(delim))
+    }
+    repeat(n: number) {
+        return Dist.cross(arr(n).map(() => this.branch()))
+    }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
@@ -232,7 +238,7 @@ export class Dist<A> {
         )
     }
     static concat(...dists: Dist<string>[]) {
-        return Dist.cross(dists).map(x => x.join(""))
+        return Dist.cross(dists).join("")
     }
     static u<A>(as: A[]) {
         return Dist.f(seed =>
@@ -266,6 +272,11 @@ export class Dist<A> {
             *Math.cos(2*Math.PI*hash(222, seed))
             *sd as Z
         )
+    }
+    static hex(len: number) {
+        return Dist.u([..."0123456789abcdef"])
+            .repeat(len)
+            .join("")
     }
     static ll(peak: number, mean: number) {
         return Dist.f(seed =>

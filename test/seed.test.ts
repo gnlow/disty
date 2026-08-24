@@ -1,4 +1,11 @@
-import { assert, assertEquals, assertThrows, assertLess, assertNotEquals } from "https://esm.sh/jsr/@std/assert@1.0.19"
+import {
+    assert,
+    assertEquals,
+    assertThrows,
+    assertLess,
+    assertNotEquals,
+    assertMatch,
+} from "https://esm.sh/jsr/@std/assert@1.0.19"
 import { Dist } from "../mod.ts"
 
 Deno.test("basic", () => {
@@ -65,4 +72,16 @@ Deno.test("morph", () => {
         .map(x => x.birth)
         .apriori(age, 25)
     assertEquals(vv.pick(Math.random()+""), 2002)
+})
+
+Deno.test("hex", () => {
+    const hex = Dist.hex(8)
+    assertEquals(
+        hex.pick("hello"),
+        hex.pick("hello"),
+    )
+    assertMatch(
+        hex.pick("hello"),
+        /^[0-9a-f]{8}$/,
+    )
 })
