@@ -215,6 +215,12 @@ export class Dist<A> {
     repeat(n: number) {
         return Dist.cross(arr(n).map(() => this.branch()))
     }
+    c(this: Dist<Object>) {
+        const that = this
+        return function (this: Object, seed: string) {
+            Object.assign(this, that.pick(seed))
+        } as unknown as { new (seed: string): A }
+    }
     
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
