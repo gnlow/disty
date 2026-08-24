@@ -67,11 +67,10 @@ export const mergeCtx =
 })
 
 export class Dist<A> {
-    constructor(
+    private constructor(
         readonly f: (seed: string, ctx: Ctx) => A,
         readonly ctx: Ctx,
         readonly key: string,
-        __CONSTRUCTOR_IS_INTERNAL_ONLY__: "OK"
     ) {}
     pick(seed: string, ctx = this.ctx): A {
         const dest = ctx.destiny.get(this.key)
@@ -327,7 +326,6 @@ export class Dist<A> {
             pick,
             ctx,
             key,
-            "OK",
         )
     }
     static yet<A>() {
