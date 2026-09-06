@@ -221,6 +221,14 @@ export class Dist<A> {
         } as unknown as { new (seed: string): A }
     }
     
+    push<T>(
+        this: Dist<T[]>,
+        dist: Dist<T>,
+    ) {
+        return Dist.cross([this, dist])
+            .map(([a, b]) => [...a, b])
+    }
+    
     static cross<Ts extends RecordLike<unknown, unknown>>(
         dists: { [K in keyof Ts]: Dist<Ts[K]> | Ts[K] },
     ) {
@@ -343,5 +351,17 @@ export class Dist<A> {
     static getKey() {
         this.keyStack.at(-1)!.cnt++
         return hashStr(...this.keyStack)
+    }
+    
+    static permu<T>(from: T[], n: number): Dist<T[]> {
+        return n == 0
+            ? Dist.u([[]])
+            : Dist.u(from).flatMap(x => {
+                const i = from.indexOf(x)
+                return Dist.permu(
+                    from.slice(0, i).concat(from.slice(i+1)),
+                    n-1,
+                ).push(Dist.u([x]))
+            })
     }
 }
