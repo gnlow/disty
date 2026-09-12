@@ -2,6 +2,7 @@ import { xxHash32 } from "https://esm.sh/js-xxhash@5.0.1"
 import { Graph } from "./src/Graph.ts"
 import { getCondiDist } from "https://gnlow.dev/@learn/cholesky@0.1.0"
 import { LogLogistic } from "https://gnlow.dev/@learn/log-logistic@0.1.0"
+import { Poisson } from "./src/Poisson.ts"
 
 export const hash =
 (...args: unknown[]) =>
@@ -294,6 +295,12 @@ export class Dist<A> {
     static ll(peak: number, mean: number) {
         return Dist.f(seed =>
             LogLogistic.fromPeakMean(peak, mean)
+                .icdf(seed)
+        )
+    }
+    static poisson(lambda: number) {
+        return Dist.f(seed =>
+            Poisson.from(lambda)
                 .icdf(seed)
         )
     }
