@@ -67,6 +67,8 @@ export const mergeCtx =
     corr: new Graph(ctxs.flatMap(ctx => [...ctx.corr.raw])),
 })
 
+const globalRef = new WeakMap<object, string>
+
 export class Dist<A> {
     private constructor(
         readonly f: (seed: string, ctx: Ctx) => A,
@@ -76,6 +78,9 @@ export class Dist<A> {
     pick(seed: string, ctx = this.ctx): A {
         const dest = ctx.destiny.get(this.key)
         return (dest?.pick(seed, this.ctx) ?? this.f(seed, ctx)) as A
+    }
+    pickWithRef(seed: object, ctx = this.ctx): A {
+        return this.pick(globalRef.getOrInsertComputed(seed, () => Dist.getKey()), ctx)
     }
     
     map<B>(f: (a: A) => B) {
